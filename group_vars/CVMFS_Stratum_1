@@ -1,0 +1,4 @@
+---
+cvmfs_stratum_level: "stratum1"
+cvmfs_spool_size: "64M"
+cvmfs_spool_threshold: "5000"

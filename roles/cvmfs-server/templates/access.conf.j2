@@ -1,0 +1,3 @@
+{# the use of cc_cvmfs here is to allow libuser to log in to s0 for legacy publishing #}
++ : ALL : cron crond
+- : ALL EXCEPT (sys) (cc_cvmfs) : ALL

@@ -1,0 +1,12 @@
+---
+
+# See https://sft.its.cern.ch/jira/browse/CVM-1243
+
+- name: Apply stratum server meta information
+  template:
+    src: meta.json.j2
+    dest: /srv/cvmfs/info/v1/meta.json
+    owner: root
+    group: root
+    mode: '644'
+

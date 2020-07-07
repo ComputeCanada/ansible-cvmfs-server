@@ -1,0 +1,10 @@
+---
+
+- name: Configure sudoers
+  template:
+    src: sudoers.cvmfs.j2
+    dest: /etc/sudoers.d/80-cvmfs-sudoers
+    owner: root
+    group: root
+    mode: "u=r,g=r,o="
+    validate: '/usr/sbin/visudo -c -f %s'

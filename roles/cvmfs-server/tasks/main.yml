@@ -1,0 +1,56 @@
+---
+
+- name: Validate inventory information
+  assert:
+    that:
+      - cvmfs_stratum_level is defined
+      - cvmfs_stratum_level in ['stratum0', 'stratum1']
+    msg: "Aborting play because required inventory variables are not defined."
+
+- name: Gather package facts
+  package_facts:
+  check_mode: no
+  tags:
+    - apache-acl
+    - check-upgrade
+    - packages
+
+- { import_tasks: auth.yml, tags: ['auth'] }
+- { import_tasks: users.yml, tags: ['users'] }
+- { import_tasks: packages.yml, tags: ['packages'] }
+- { import_tasks: storage.yml, tags: ['storage'], when: cvmfs_configure_storage | bool }
+- { import_tasks: check-upgrade.yml, tags: ['check-upgrade'] }
+- { import_tasks: pre-upgrade.yml, tags: ['pre-upgrade'], when: cvmfs_server_upgrade | default(false) }
+- { import_tasks: cvmfs.yml, tags: ['cvmfs'] }
+- { import_tasks: post-upgrade.yml, tags: ['post-upgrade'], when: cvmfs_server_upgrade | default(false) }
+
+#- import_tasks: kernel.yml
+#  tags: ['kernel']
+#  when:
+#    - cvmfs_stratum_level == "stratum0"
+#    - ansible_distribution_major_version is version_compare("7", "<")
+
+- { import_tasks: apache-ports.yml, tags: ['apache-ports'] }
+- { import_tasks: monitoring.yml, tags: ['monitoring'], when: cvmfs_stratum_level == "stratum1" }
+- { import_tasks: repos.yml, tags: ['repos'] }
+- { import_tasks: gc.yml, tags: ['gc'] }
+- { import_tasks: apache-acl.yml, tags: ['apache-acl'], when: cvmfs_stratum_level == "stratum1" and cvmfs_restricted_repo_name is defined }
+- { import_tasks: configure.yml, tags: ['configure'] }
+
+#- import_tasks: lib-access.yml
+#  tags: ['lib-access']
+#  when:
+#    - cvmfs_stratum_level == "stratum0"
+#    - ansible_distribution_major_version is version_compare("7", "<")
+
+- import_tasks: gateway.yml
+  tags: ['gateway']
+  when:
+    - cvmfs_stratum_level == "stratum0"
+    - ansible_distribution_major_version is version_compare("7", ">=")
+
+- { import_tasks: meta-info.yml, tags: ['meta-info'] }
+- { import_tasks: iptables.yml, tags: ['iptables'] }
+- { import_tasks: logging.yml, tags: ['logging'] }
+#- { import_tasks: filebeat.yml, tags: ['filebeat'], when: cvmfs_use_filebeat | bool }
+

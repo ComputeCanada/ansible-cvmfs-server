@@ -1,0 +1,27 @@
+---
+
+# 'cvmfs' client package is needed on s0 but not s1
+- name: Install CVMFS server RPMs
+  yum:
+    name: "{{ server_packages }} + {{ client_packages if cvmfs_stratum_level == 'stratum0' else [] }}"
+    enablerepo: "cernvm"
+  vars:
+    server_packages:
+      - "mod_wsgi"
+      - "httpd"
+      - "cvmfs-server-{{ cvmfs_application_version }}"
+    client_packages:
+      - "cvmfs-{{ cvmfs_application_version }}"
+
+# On s1, this directory may not exist yet since CVMFS client is not installed
+- name: Create keys directory
+  file:
+    path: /etc/cvmfs/keys
+    state: directory
+    owner: root
+    group: root
+    mode: 'u=rwx,g=rx,o=rx'
+
+- name: Enable httpd service
+  service: name=httpd enabled=yes state=started
+

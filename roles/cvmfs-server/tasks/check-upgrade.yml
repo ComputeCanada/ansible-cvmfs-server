@@ -1,0 +1,19 @@
+---
+
+# If cvmfs-server is installed and is an older version than the 
+# desired cvmfs_application_version, an upgrade must be performed.
+- set_fact:
+    cvmfs_server_upgrade: True
+  when:
+    - ansible_facts.packages['cvmfs-server'] is defined
+    - ansible_facts.packages['cvmfs-server'].0.version is version_compare(cvmfs_application_version, "<")
+
+# TODO: use interactive prompt when bug is fixed https://github.com/ansible/ansible/issues/35372
+#- name: Prompt to upgrade
+#  pause: prompt="CVMFS will be updated to v{{ cvmfs_application_version }}"
+#  when: cvmfs_server_upgrade | default(false)
+
+- name: CVMFS upgrade
+  debug: msg="CVMFS will be upgraded to v{{ cvmfs_application_version }}"
+  when: cvmfs_server_upgrade | default(false)
+  changed_when: true

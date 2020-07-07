@@ -1,0 +1,103 @@
+---
+
+###### Variables which apply to both s0 and s1.
+
+# Whether to configure the required volumes and filesystems for CVMFS.
+# If false the admin must set them up manually.
+cvmfs_configure_storage: true
+
+# If cvmfs_configure_storage, name of physical device (e.g. "vdb")
+# on which to set up a VG for CVMFS. Must be undefined by default.
+# cvmfs_pv_name:
+
+# If cvmfs_configure_storage, name of volume group for CVMFS logical volumes.
+cvmfs_vg_name: "datavg"
+
+# If cvmfs_configure_storage, size of the /srv/cvmfs logical volume and
+# filesystem for the primary repository storage.
+cvmfs_srv_size: "10G"
+
+# Dict of attributes of the 'cvmfs' service account.
+cvmfs_service_account: {}
+
+# Dict of all admin accounts and associated information, from which
+# authorized accounts are selected (using cvmfs_authorized_admins).
+# Keys can be removed if they contain the attribute 'state: absent'.
+cvmfs_admin_list: {}
+
+# List of admin accounts to set up and manage, to be defined on the basis of
+# specific hosts or groups.
+cvmfs_authorized_admins: []
+
+# The version of cvmfs-server to install or upgrade to, e.g. "2.6.0".
+# cvmfs_application_version: ""
+
+# The port that httpd listens on. If this is changed for a stratum0
+# server, the change must also be reflected in cvmfs_s0_address.
+cvmfs_http_port: "8000"
+
+# Dict of repositories (and associated properties) to configure on the server.
+# Can contain a sub-sub-dict 'server_conf' for arbitrary CVMFS server settings.
+# Note that if a repository is to be defined without specifying any properties,
+# '{}' must be used to make it an empty dict rather than 'None'. Example:
+# cvmfs_repo_list:
+#   software.example.org:
+#     gateway: true
+#   data.example.org:
+#     replicate: false
+#     options: "-Z none"
+#     server_conf:
+#       CVMFS_FILE_MBYTE_LIMIT: "4096"
+#   projects.example.org: {}
+cvmfs_repo_list: {}
+
+# Set up filebeat to send logs to ELK
+cvmfs_use_filebeat: false
+
+# An optional description of the site or location of the stratum server,
+# used for descriptive purposes (e.g. as a filebeat tag).
+#cvmfs_resource_site: "example"
+
+# The stratum server meta information is displayed in monitoring, etc.
+# See https://cvmfs.readthedocs.io/en/stable/cpt-servermeta.html#global-meta-information
+cvmfs_server_meta_info:
+  administrator: "Your Name"
+  email: "you@organisation.org"
+  organisation: "Your Organisation"
+
+###### Variables which only apply to s1.
+
+# List of IP addresses or subnets which may connect to the s1 for HTTP read.
+# The default is global access.
+cvmfs_s1_http_acl:
+  - "0.0.0.0/0"
+
+# The repository to which the restricted ACLs will be applied.
+# Must be undefined by default.
+# cvmfs_restricted_repo_name:
+
+# ACLs for access to restricted repo on s1. Use this only for
+# general rules for all hosts.
+cvmfs_s1_restricted_acl: []
+
+# ACLs for access to restricted repo on s1. Use this only for extra
+# rules specific to a particular host (i.e. private IP addresses).
+cvmfs_s1_restricted_acl_extra: []
+
+# The address, including port number, of the s0 that s1 servers will
+# replicate from.
+cvmfs_s0_address: ""
+
+###### Variables which only apply to s0.
+
+# List of IP addresses or subnets which may connect to the s0 for publishing.
+cvmfs_s0_publish_acl: []
+
+# List of IP addresses or subnets which may connect to the s0 for HTTP read
+# access (must include publishers).
+cvmfs_s0_http_acl: []
+
+###### Other
+
+# Possibly to be removed in future
+#institute: "default"

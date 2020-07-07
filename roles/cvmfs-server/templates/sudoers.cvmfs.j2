@@ -1,0 +1,3 @@
+{% for item in cvmfs_admin_list.keys()|intersect(cvmfs_authorized_admins) %}
+{{ item }}	ALL=(ALL) NOPASSWD:ALL
+{% endfor %}

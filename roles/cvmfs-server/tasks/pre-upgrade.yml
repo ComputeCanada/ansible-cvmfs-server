@@ -1,0 +1,45 @@
+---
+
+# TODO: now that iptables are managed by template blockinfile, is there a better way to do this? Relies on comment.
+# TODO: need to update this to close access for gateway anyway
+- name: Temporarily close publishing access for upgrade
+  lineinfile: dest=/etc/sysconfig/iptables regexp="SSH access for content publishing" state="absent"
+  when: 
+    - cvmfs_stratum_level == "stratum0"
+    - ansible_distribution_major_version is version_compare("7", "<")
+  register: iptables_close_access
+
+# This must be done immediately so a handler can not be used here.
+- name: Reload iptables rules
+  service: name=iptables state=reloaded
+  changed_when: false
+  when:
+    - cvmfs_stratum_level == "stratum0"
+    - ansible_distribution_major_version is version_compare("7", "<")
+    - iptables_close_access.changed
+
+- name: Temporarily disable snapshot cron for upgrade
+  cron: name="cvmfs-server-snapshot" cron_file="cvmfs-server-snapshot" user="root" state="absent"
+  when: cvmfs_stratum_level == "stratum1"
+
+- name: Temporarily disable gc cron for upgrade
+  cron: name="cvmfs-garbage-collection all" cron_file="cvmfs-garbage-collection" user="root" state="absent"
+
+- name: Wait for any transaction/gc in progress to finish
+  wait_for:
+    path: "/var/spool/cvmfs/{{ item.key }}/in_transaction.lock"
+    state: absent
+  with_dict: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: cvmfs_stratum_level == "stratum0"
+
+- name: Wait for any snapshot/gc in progress to finish  
+  wait_for:
+    path: "/var/spool/cvmfs/{{ item.key }}/is_updating.lock"
+    state: absent
+  with_dict: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: cvmfs_stratum_level == "stratum1"
+

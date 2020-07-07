@@ -1,0 +1,19 @@
+---
+
+- name: Migrate repositories after upgrade
+  command: "cvmfs_server migrate {{ item.key }}"
+  with_dict: "{{ cvmfs_repo_list }}"
+  register: cvmfs_repo_migration
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Show result of repository migration
+  debug:
+    var: item.stdout
+  with_items: "{{ cvmfs_repo_migration.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: not ansible_check_mode
+
+# if additional manual upgrade steps are needed, could use pause with a prompt here.
+# https://docs.ansible.com/ansible/latest/modules/pause_module.html

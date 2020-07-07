@@ -1,0 +1,63 @@
+---
+
+# Contains configuration actions that must be done for each repository (including repository creation and replication).
+
+# Stratum 1 tasks
+- name: Install CVMFS repository keys (stratum 1)
+  copy: src="{{ item.key }}.pub" dest="/etc/cvmfs/keys/{{ item.key }}.pub" mode=0444 owner=root group=root
+  with_dict: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: 
+    - cvmfs_stratum_level == "stratum1"
+    - item.value.replicate | default(true)
+
+# On s1, repo ownership does not matter in the same way as on s0, so we always use the unprivileged cvmfs service account.
+- name: Adding repository replicas (stratum 1)
+  command:
+    cmd: cvmfs_server add-replica -o cvmfs -w http://localhost:{{ cvmfs_http_port }}/cvmfs/{{ item.key }} http://{{ cvmfs_s0_address }}/cvmfs/{{ item.key }} /etc/cvmfs/keys/
+    creates: "/etc/cvmfs/repositories.d/{{ item.key }}/server.conf"
+  with_dict: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: 
+    - cvmfs_stratum_level == "stratum1"
+    - item.value.replicate | default(true)
+
+# Stratum 0 tasks
+- name: Create cron task to re-sign whitelists (stratum 0)
+  cron: name="cvmfs-whitelist-resign {{ item.key }}" cron_file="cvmfs-whitelist-resign" user="root" minute="00" hour="09" day="1,16" job="/usr/bin/cvmfs_server resign {{ item.key }}"
+  with_dict: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: cvmfs_stratum_level == "stratum0"
+
+# Using the gateway, the repo owner does not matter on the s0 either. 
+# TODO When all stacks are fully migrated to gateway, remove 
+# the "-o <owner>" info from inventory and hardcode "-o cvmfs" here (if 'cvmfs' is not used by default)
+- name: Please run the following commands manually now to create repositories (stratum 0)
+  debug: msg="cvmfs_server mkfs -w http://localhost:{{ cvmfs_http_port }}/cvmfs/{{ item.key }} {{ item.value.options }} -f overlayfs -G '30 days ago' -a shake128 -z {{ item.key }}"
+  with_dict: "{{ cvmfs_repo_list }}"
+  when: cvmfs_stratum_level == "stratum0"
+  loop_control:
+    label: "{{ item.key }}"
+
+# Stratum 0 and 1 tasks
+
+# Apply some configuration to repository server.conf.
+# Should only be used for settings that are not otherwise already present by default in server.conf .
+# Note: when passing a dict of a dict as a var like this, .get() needs to be used.
+- name: Apply repository configuration
+  blockinfile:
+    marker: "# --- {mark} Ansible managed for CVMFS"
+    insertafter: EOF
+    state: present
+    dest: "/etc/cvmfs/repositories.d/{{ item.key }}/server.conf"
+    block: "{{ lookup('template', 'templates/server.conf.j2') }}"
+  vars:
+    cvmfs_server_conf: "{{ item.value.get('server_conf', {}) }}"
+  with_dict: "{{ cvmfs_repo_list }}"
+  when: (cvmfs_stratum_level == "stratum0") or (cvmfs_stratum_level == "stratum1" and (item.value.replicate | default(true)))
+  loop_control:
+    label: "{{ item.key }}"
+

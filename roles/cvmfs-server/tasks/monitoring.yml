@@ -1,0 +1,6 @@
+---
+
+- name: Install cvmfs-servermon (stratum 1)
+  yum: name="cvmfs-servermon" state=latest
+  when: cvmfs_stratum_level == "stratum1"
+

@@ -1,0 +1,59 @@
+---
+
+### One-time procedure to add swap space
+# sudo /sbin/parted /dev/vda mkpart primary linux-swap 15032385536B 21474836479B          
+# sudo /sbin/reboot #if needed
+# sudo /sbin/mkswap /dev/vda2
+# sudo /sbin/blkid  /dev/vda2
+# MyUUID=`/sbin/blkid -o value -s UUID /dev/vda2`
+# echo $MyUUID
+# sudo /sbin/swapon -U $MyUUID
+# echo "UUID=$MyUUID swap                    swap    defaults        0 0" | sudo tee -a /etc/fstab
+###
+
+# Note: for now a manual '/sbin/pvresize /dev/vdb' is needed when expanding.
+# Will be handled by https://github.com/ansible-collections/community.general/pull/422
+- name: Create volume group for CVMFS
+  lvg: pvs="/dev/{{ cvmfs_pv_name }}" vg="{{ cvmfs_vg_name }}"
+  when: cvmfs_pv_name is defined
+
+# /srv/cvmfs
+- name: Create logical volume for CVMFS
+  lvol: vg="{{ cvmfs_vg_name }}" lv=srv.cvmfs size="{{ cvmfs_srv_size }}"
+
+- name: Make XFS filesystem for CVMFS
+  filesystem: dev="/dev/mapper/{{ cvmfs_vg_name }}-srv.cvmfs" fstype=xfs resizefs=yes
+
+- name: Mount CVMFS filesystem and add to /etc/fstab
+  mount: name=/srv/cvmfs src="/dev/mapper/{{ cvmfs_vg_name }}-srv.cvmfs" state=mounted fstype=xfs passno=2
+
+# /var/spool/cvmfs
+- name: Create logical volume for spool filesystem
+  lvol: vg="{{ cvmfs_vg_name }}" lv=var.spool.cvmfs size="{{ cvmfs_spool_size }}"
+
+- name: Format ext4 spool filesystem
+  filesystem: dev="/dev/mapper/{{ cvmfs_vg_name }}-var.spool.cvmfs" fstype=ext4
+
+- name: Mount spool filesystem and add to /etc/fstab
+  mount: name=/var/spool/cvmfs src="/dev/mapper/{{ cvmfs_vg_name }}-var.spool.cvmfs" state=mounted fstype=ext4 passno=2
+
+# /var/log/cvmfs
+- name: Create logical volume for CVMFS log filesystem
+  lvol: vg="{{ cvmfs_vg_name }}" lv=var.log.cvmfs size="1G"
+
+- name: Format CVMFS log filesystem
+  filesystem: dev="/dev/mapper/{{ cvmfs_vg_name }}-var.log.cvmfs" fstype=ext4 resizefs=yes
+
+- name: Mount CVMFS log filesystem and add to /etc/fstab
+  mount: name=/var/log/cvmfs src="/dev/mapper/{{ cvmfs_vg_name }}-var.log.cvmfs" state=mounted fstype=ext4 passno=2
+
+# /var/log/httpd
+- name: Create logical volume for httpd log filesystem
+  lvol: vg="{{ cvmfs_vg_name }}" lv=var.log.httpd size="10G"
+
+- name: Format httpd log filesystem
+  filesystem: dev="/dev/mapper/{{ cvmfs_vg_name }}-var.log.httpd" fstype=ext4 resizefs=yes
+
+- name: Mount httpd log filesystem and add to /etc/fstab
+  mount: name=/var/log/httpd src="/dev/mapper/{{ cvmfs_vg_name }}-var.log.httpd" state=mounted fstype=ext4 passno=2
+

@@ -1,0 +1,12 @@
+---
+
+- name: restart cvmfs-gateway
+  service:
+    name: cvmfs-gateway
+    state: restarted
+
+- name: reload httpd
+  service:
+    name: httpd
+    state: reloaded
+

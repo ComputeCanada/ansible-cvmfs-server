@@ -1,0 +1,73 @@
+---
+
+# The cvmfs user/group can be set to particular values if needed, 
+# e.g. if it has to match something from LDAP,
+# otherwise use the defaults.
+# For s1, the client RPM will not be installed so the account will not get created automatically.
+# The cvmfs account does not really need to exist on a s1, but we will make it anyway,
+# so that gc and snapshot (swissknife) operations run as a non-privileged user.
+# Moreover, use the same UID and GID for consistency/just in case LDAP is used.
+
+- name: Create cvmfs group
+  group:
+    name: cvmfs
+    gid: "{{ cvmfs_service_account['gid'] }}"
+
+- name: Create cvmfs user
+  user:
+    name: cvmfs
+    uid: "{{ cvmfs_service_account['uid'] }}"
+    group: cvmfs
+    home: "{{ cvmfs_service_account['home'] | default('/var/lib/cvmfs') }}" 
+    shell: "{{ cvmfs_service_account['shell'] | default('/sbin/nologin') }}"
+    create_home: no
+
+# If  LDAP is used we will end up with the same UIDs from LDAP.
+# If  LDAP is not used we don't care what UID the accounts have.
+# Iterate over all accounts, but only add those defined as authorized for this host.
+- name: Set up administrator accounts
+  user:
+    name: "{{ item.key }}"
+    create_home: yes
+    system: no
+  with_dict: "{{ cvmfs_admin_list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: "item.key in cvmfs_authorized_admins"
+
+- name: Set up administrator keys
+  authorized_key:
+    user: "{{ item.key }}"
+    state: "{{ item.value.state | default('present') }}"
+    key: "{{ item.value.pubkey }}"
+    exclusive: yes
+  with_dict: "{{ cvmfs_admin_list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: "item.key in cvmfs_authorized_admins"
+
+# This covers the case of an account being removed from cvmfs_authorized_admins instead of setting 'state: absent' in cvmfs_admin_list.
+# ignore_errors is used to avoid an error when the account does not exist (in which case the key does not need to be checked).
+# Ignoring the specific error message does not work since the variable is not registered if the task fails (chicken and egg).
+# e.g. ignore_errors: "{{ 'Either user must exist or you must provide full path to key file in check mode' in check_authorized_keys.results|map(attribute='msg')|list }}"
+# This can probably be improved once this is addressed: https://github.com/ansible/ansible/issues/30112
+- name: Check for administrator keys that should be absent
+  authorized_key:
+    user: "{{ item.key }}"
+    state: absent
+    key: "{{ item.value.pubkey }}"
+  with_dict: "{{ cvmfs_admin_list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: "item.key not in cvmfs_authorized_admins"
+  check_mode: True
+  ignore_errors: True
+  register: check_authorized_keys
+
+# In this case, the risk of accidental lockout is too high to remove keys automatically with Ansible.
+# Manual administrator action is required instead.
+- name: Fail if a key that should be absent is found
+  fail:
+    msg: "Please manually remove the key(s) that need to change."
+  when: check_authorized_keys.changed
+

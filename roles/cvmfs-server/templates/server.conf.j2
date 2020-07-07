@@ -1,0 +1,7 @@
+CVMFS_SYNCFS_LEVEL=cautious
+CVMFS_ENFORCE_LIMITS=true
+CVMFS_ROOT_KCATALOG_LIMIT=50
+CVMFS_NESTED_KCATALOG_LIMIT=200
+{% for key, value in cvmfs_server_conf.items() %}
+{{ key }}={{ value }}
+{% endfor %}

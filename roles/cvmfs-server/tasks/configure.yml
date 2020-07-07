@@ -1,0 +1,25 @@
+---
+
+- name: Increase file descriptor limits
+  pam_limits: domain='*' limit_item=nofile limit_type=- value='20000'
+
+# See https://cvmfs.readthedocs.io/en/stable/cpt-replica.html#sct-geoip-db
+# We set the mode and owner of the file, but it must be manually created by an administrator.
+# When deploying a new s1 server, you can acquire the key from another existing s1.
+- name: Check geodb license key file (stratum 1)
+  file:
+    path: /etc/cvmfs/server.local
+    owner: root
+    group: cvmfs
+    mode: 0640
+    state: file
+  when: cvmfs_stratum_level == "stratum1"
+
+- name: Create cron task to monitor for whitelist expiration (stratum 0)
+  cron: name="cvmfs-whitelist-check" cron_file="cvmfs-whitelist-check" user="cvmfs" minute="00" hour="10" job="/usr/bin/find /srv/cvmfs/*/.cvmfswhitelist -mtime +24 -exec /usr/bin/logger -t cvmfs-whitelist-check \"CVMFS whitelist {} is about to expire\" \\;"
+  when: cvmfs_stratum_level == "stratum0"
+
+- name: Create cron task for CVMFS server snapshots (stratum 1)
+  cron: name="cvmfs-server-snapshot" cron_file="cvmfs-server-snapshot" user="root" minute="*/5" job="/usr/bin/cvmfs_server snapshot -a -s" 
+  when: cvmfs_stratum_level == "stratum1"
+

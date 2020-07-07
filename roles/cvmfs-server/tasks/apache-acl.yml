@@ -1,0 +1,33 @@
+---
+
+- name: Get httpd version
+  set_fact:
+    httpd_version: "{{ ansible_facts.packages['httpd'].0.version }}"
+
+# These lineinfile actions disable the default ACL as well as insert a special marker string
+- name: Disable default Apache ACL for restricted repo (v2.2)
+  lineinfile:
+    path: /etc/httpd/conf.d/cvmfs.{{cvmfs_restricted_repo_name}}.conf
+    regexp: 'Allow from all'
+    line: '    #Allow from all #MARKER Ansible managed Apache ACLs for CVMFS'
+  when: httpd_version is version_compare('2.4', '<')
+
+- name: Disable default Apache ACL for restricted repo (v2.4)
+  lineinfile:
+    path: /etc/httpd/conf.d/cvmfs.{{cvmfs_restricted_repo_name}}.conf
+    regexp: 'Require all granted'
+    line: '    #Require all granted #MARKER Ansible managed Apache ACLs for CVMFS'
+  when: httpd_version is version_compare('2.4', '>=')
+
+# The marker string allows this template action to find the right spot for either Apache version
+- name: Set Apache ACLs for restricted repo from trusted IPs
+  blockinfile:
+    marker: "# --- {mark} Ansible managed Apache ACLs for CVMFS"
+    insertafter: "#MARKER Ansible managed Apache ACLs for CVMFS"
+    state: present
+    dest: /etc/httpd/conf.d/cvmfs.{{cvmfs_restricted_repo_name}}.conf
+    block: "{{ lookup('template', 'templates/apache-acl.conf.j2') }}"
+  vars:
+    cvmfs_s1_restricted_acl_combined: "{{ cvmfs_s1_restricted_acl + cvmfs_s1_restricted_acl_extra }}"
+  notify: "reload httpd"
+

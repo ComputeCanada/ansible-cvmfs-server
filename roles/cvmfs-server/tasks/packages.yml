@@ -1,0 +1,47 @@
+---
+
+- name: Install some pre-requisite packages
+  yum:
+    name: "{{ packages }}"
+    state: "present"
+    update_cache: yes
+  vars:
+    packages:
+      - lsof              # useful
+      - lvm2              # to make logical volumes
+      - xfsprogs          # to make XFS filesystem
+      - parted            # to make swap partition
+      - wget              # useful
+      - nc                # useful
+      - epel-release      # to provide jq dependency for cvmfs-server
+      - python2-jmespath  # to use ansible json_query filter
+      - iptables          # required
+
+- name: Install some pre-requisite packages for EL7
+  yum:
+    name: iptables-services	# required for iptables on EL7
+  when:
+    - ansible_distribution == "RedHat" or ansible_distribution == "CentOS" or ansible_distribution == "Scientific"
+    - ansible_distribution_major_version is version_compare("7", ">=")
+
+- name: Install CVMFS YUM repository
+  yum: name=https://ecsft.cern.ch/dist/cvmfs/cvmfs-release/cvmfs-release-latest.noarch.rpm
+  when: ansible_facts.packages['cvmfs-release'] is not defined
+
+# Disable the cernvm repo by default, so cvmfs-server only gets updated when we want (by Ansible)
+- name: Configure CVMFS YUM repository
+  ini_file:
+    path: "/etc/yum.repos.d/cernvm.repo"
+    section: "cernvm"
+    option: "enabled"
+    value: "0"
+    create: "no"
+    no_extra_spaces: "yes"
+
+# for cvmfs-servermon installation
+- name: Install cvmfs-contrib-release YUM repository (stratum 1)
+  yum: name=https://ecsft.cern.ch/dist/cvmfs/cvmfs-contrib-release/cvmfs-contrib-release-latest.noarch.rpm
+  when:
+    - cvmfs_stratum_level == "stratum1"
+    - ansible_facts.packages['cvmfs-contrib-release'] is not defined
+

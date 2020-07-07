@@ -1,0 +1,12 @@
+---
+
+#cvmfs_admin_list:
+#  admin1:
+#    pubkey: "{{ lookup('file', 'ssh-admin1.pub') }}"
+#    login:
+#      - '192.0.2.0'
+#  admin2:
+#    pubkey: "{{ [ lookup('file', 'ssh-admin2-rsa.pub'), lookup('file', 'ssh-admin2-ed25519.pub') ] | join('\n') }}"
+#    login:
+#      - '192.0.2.1'
+

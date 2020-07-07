@@ -1,0 +1,42 @@
+---
+
+- name: Add yum repo for elastic-5.x
+  yum_repository:
+    name: elastic-5.x
+    description: Elastic repository for 5.x packages
+    baseurl: https://artifacts.elastic.co/packages/5.x/yum
+    gpgcheck: yes
+    enabled: yes
+
+- name: Install elastic-5.x signing key
+  rpm_key:
+    state: present
+    key: https://packages.elastic.co/GPG-KEY-elasticsearch
+
+- name: Install filebeat
+  yum:
+    name: filebeat
+    state: present
+
+- name: Install SSL certificate for log transport
+  copy:
+    src: beats-san.crt
+    dest: /etc/filebeat/beats-san.crt
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Configure filebeat
+  template:
+    src: filebeat.yml.j2
+    dest: /etc/filebeat/filebeat.yml
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Start filebeat
+  service:
+    name: filebeat
+    state: started
+    enabled: yes
+

@@ -1,0 +1,8 @@
+---
+
+- name: Configure httpd to listen on higher port
+  template:
+    src: listen.conf.j2
+    dest: /etc/httpd/conf.d/listen.conf
+  notify: "reload httpd"
+

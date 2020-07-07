@@ -1,0 +1,25 @@
+{% for item in cvmfs_login_acl %}
+-A INPUT -p tcp -s {{ item }} --dport 22 -j ACCEPT -m comment --comment "SSH access for admin login"
+{% endfor %}
+
+{% if cvmfs_stratum_level == "stratum0" %}
+# for CVMFS stratum 0
+{% for item in cvmfs_s0_http_acl %}
+-A INPUT -p tcp -s {{ item }} --dport {{ cvmfs_http_port }} -j ACCEPT -m comment --comment "HTTP port {{ cvmfs_http_port }} access"
+{% endfor %}
+{% for item in cvmfs_s0_publish_acl %}
+{% if ansible_distribution_major_version is version_compare("7", "<") %}
+-A INPUT -p tcp -s {{ item }} --dport 22 -j ACCEPT -m comment --comment "SSH access for content publishing"
+{% else %}
+-A INPUT -p tcp -s {{ item }} --dport {{ cvmfs_http_port }} -j ACCEPT -m comment --comment "HTTP port {{ cvmfs_http_port }} access for content publishing"
+-A INPUT -p tcp -s {{ item }} --dport 4929 -j ACCEPT -m comment --comment "gateway port 4929 access for content publishing"
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if cvmfs_stratum_level == "stratum1" %}
+# for CVMFS stratum 1
+{% for item in cvmfs_s1_http_acl %}
+-A INPUT -p tcp -s {{ item }} --dport {{ cvmfs_http_port }} -j ACCEPT -m comment --comment "HTTP port {{ cvmfs_http_port }} access"
+{% endfor %}
+{% endif %}
+

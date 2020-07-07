@@ -1,0 +1,11 @@
+---
+
+# for snapshot and gc logs
+- name: Set up logrotate for CVMFS
+  template:
+    src: "cvmfs-logrotate.j2"
+    dest: "/etc/logrotate.d/cvmfs"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+

@@ -1,0 +1,25 @@
+---
+# These variables apply to s0 and/or s1 server
+cvmfs_srv_size: "1500G"
+cvmfs_application_version: "2.7.2"
+cvmfs_s0_address: "cvmfs-s0-soft.example.org:8000"
+cvmfs_repo_list:
+  cvmfs-config.example.org:
+    options: "-o root"
+  soft.example.org:
+    server_conf:
+      CVMFS_FILE_MBYTE_LIMIT: "2048"
+  restricted.example.org:
+    server_conf:
+      CVMFS_FILE_MBYTE_LIMIT: "2048"
+  data.example.org:
+    options: "-Z none"
+    server_conf:
+      CVMFS_FILE_MBYTE_LIMIT: "30720"
+
+cvmfs_restricted_repo_name: "restricted.example.org"
+cvmfs_s1_restricted_acl: []
+
+# These variables only apply to s0 server
+cvmfs_s0_publish_acl: []
+cvmfs_s0_http_acl: []

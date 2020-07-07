@@ -1,0 +1,14 @@
+{# Important: stratum 1 server requires access to itself via IPv4 and IPv6 localhost. #}
+{% if httpd_version is version_compare('2.4', '<') %}
+    Allow from ::1
+    Allow from 127.0.0.1
+{% for item in cvmfs_s1_restricted_acl_combined %}
+    Allow from {{ item }}
+{% endfor %}
+{% else %}
+    Require ip ::1
+    Require ip 127.0.0.1
+{% for item in cvmfs_s1_restricted_acl_combined %}
+    Require ip {{ item }}
+{% endfor %}
+{% endif %}

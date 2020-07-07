@@ -1,0 +1,8 @@
+cvmfs_pv_name: "vdb"
+
+# for squid servers co-located with a s1
+cvmfs_s1_restricted_acl_extra:
+  - "10.10.73.3"	# squid - internal IP
+  - "10.10.73.2"	# squid - internal IP
+  - "10.10.73.1"	# squid - internal IP
+
