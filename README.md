@@ -1,7 +1,7 @@
 # Compute Canada ansible-cvmfs-server role
 
 This is a one-time example release of the Compute Canada ansible-cvmfs-server role, which is maintained elsewhere.
-It may not immediately work out of the box, because some content has been removed.
+If you are interested in using this Ansible role please let us know!
 
 # Prepare the system
 ## Set up ansible-pull
