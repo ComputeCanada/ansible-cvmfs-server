@@ -1,3 +1,8 @@
+# Compute Canada ansible-cvmfs-server role
+
+This is an example release of the Compute Canada ansible-cvmfs-server role, which is maintained elsewhere.
+If you are interested in using this Ansible role please let us know!
+
 # Prepare the system
 It can be useful to do `echo "export PYTHONUNBUFFERED=1" >> ~/.bashrc` in your session to ensure that Ansible output is streamed to stdout smoothly.
 
