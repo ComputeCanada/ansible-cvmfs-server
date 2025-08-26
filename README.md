@@ -21,10 +21,6 @@ It can be useful to do `echo "export PYTHONUNBUFFERED=1" >> ~/.bashrc` in your s
 1. Install git
     * ```sudo dnf install git```
 
-1.   Add gitlab server to system known hosts
-     ```
-     echo "git.computecanada.ca,199.241.165.30 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILPNtdc21HhCqRQRZFQOHKyRHno/w58Y6OB047ZVS2TC" | sudo tee -a /etc/ssh/ssh_known_hosts
-     ```
 ## Set up inventory
 1.   Add the hostname of the new system to the Ansible inventory file ```hosts``` in git, with membership in the appropriate groups, and additional host or group vars as needed (which are documented [here](roles/cvmfs-server/defaults/main.yml)).
 
@@ -34,12 +30,12 @@ It can be useful to do `echo "export PYTHONUNBUFFERED=1" >> ~/.bashrc` in your s
 1.   `sudo` will be used by Ansible to execute the role - so do not use sudo when invoking `ansible-pull`. However you may need to e.g. `sudo -l` at this point to avoid a password prompt if applicable.
 1.   It is good practice to use ```--check``` and ```--diff``` first to see which changes will be applied. 
      ```
-     ansible-pull -U gitlab@git.computecanada.ca:cc-cvmfs/ansible-cvmfs-server.git --checkout=master --full -i hosts --check --diff
+     ansible-pull -U git@github.com:ComputeCanada/ansible-cvmfs-server.git --checkout=example --full -i hosts --check --diff
      ```
      Note: this may fail due to missing files etc., if the play has not yet completed in non-check mode to actually make changes, which is expected.
 1.   Run without check mode to apply all changes.
      ```
-     ansible-pull -U gitlab@git.computecanada.ca:cc-cvmfs/ansible-cvmfs-server.git --checkout=master --full -i hosts
+     ansible-pull -U git@github.com:ComputeCanada/ansible-cvmfs-server.git --checkout=example --full -i hosts
      ```
 1.   If you want to limit the scope of changes to a subset of tasks, use ```-t``` to run specific 
 [tagged](https://docs.ansible.com/ansible/latest/user_guide/playbooks_tags.html) tasks. 
@@ -53,4 +49,4 @@ Some parts of the stratum server deployment are not automated and must be done m
 # Testing and development
 To test the Ansible role, create a branch in Git (named ```test``` in this example), and pull from there:
 
-    ansible-pull -U gitlab@git.computecanada.ca:cc-cvmfs/ansible-cvmfs-server.git --checkout=test --full -i hosts
+    ansible-pull -U git@github.com:ComputeCanada/ansible-cvmfs-server.git --checkout=test --full -i hosts
