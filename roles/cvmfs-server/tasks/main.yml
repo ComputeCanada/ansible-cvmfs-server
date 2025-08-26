@@ -1,0 +1,48 @@
+---
+# Make sure that cvmfs_stratum_level is defined appropriately and the OS is RHEL-based.
+- name: Validate inventory information
+  assert:
+    that:
+      - cvmfs_stratum_level is defined
+      - cvmfs_stratum_level in ['stratum0', 'stratum1']
+      - ansible_os_family == 'RedHat'
+    msg: "Aborting play because required inventory variables are not defined or OS is not supported."
+
+- name: Gather package facts
+  package_facts:
+  check_mode: no
+  tags:
+    - apache-acl
+    - check-upgrade
+    - packages
+
+- { import_tasks: auth.yml, tags: ['auth'] }
+- { import_tasks: users.yml, tags: ['users'] }
+- { import_tasks: packages.yml, tags: ['packages'] }
+- { import_tasks: storage.yml, tags: ['storage'], when: cvmfs_configure_storage | bool }
+- { import_tasks: check-upgrade.yml, tags: ['check-upgrade'] }
+- { import_tasks: pre-upgrade.yml, tags: ['pre-upgrade'], when: cvmfs_server_upgrade | default(false) }
+- { import_tasks: cvmfs.yml, tags: ['cvmfs'] }
+- { import_tasks: post-upgrade.yml, tags: ['post-upgrade'], when: cvmfs_server_upgrade | default(false) }
+- { import_tasks: apache-config.yml, tags: ['apache-config'] }
+- { import_tasks: monitoring.yml, tags: ['monitoring'], when: cvmfs_stratum_level == "stratum1" }
+- { import_tasks: repos.yml, tags: ['repos'] }
+# For special s0 repository migration procedure. Only runs when migrate tag is explicitly specified.
+- { import_tasks: migrate.yml, tags: ['never', 'migrate'], when: cvmfs_stratum_level == "stratum0" }
+- { import_tasks: gc.yml, tags: ['gc'] }
+
+- import_tasks: apache-acl.yml
+  tags: ['apache-acl']
+  when:
+    - cvmfs_stratum_level == "stratum1"
+    - cvmfs_restricted_repo_name is defined
+    - cvmfs_restricted_repo_name in cvmfs_repo_list|map(attribute='name')
+
+- { import_tasks: configure.yml, tags: ['configure'] }
+
+- import_tasks: gateway.yml
+  tags: ['gateway']
+  when: cvmfs_stratum_level == "stratum0"
+
+- { import_tasks: meta-info.yml, tags: ['meta-info'] }
+- { import_tasks: iptables.yml, tags: ['iptables'] }

@@ -1,0 +1,36 @@
+---
+# These variables apply to s0 and/or s1 server
+cvmfs_srv_size: "2250G"
+cvmfs_s0_address: "cvmfs-s0-soft.example.org:8000"
+cvmfs_repo_list:
+  - name: cvmfs-config.example.org
+  - name: soft.example.org
+    gateway: true
+    server_conf:
+      CVMFS_FILE_MBYTE_LIMIT: "2048"
+  - name: restricted.example.org
+    gateway: true
+    server_conf:
+      CVMFS_FILE_MBYTE_LIMIT: "2048"
+  - name: data.example.org
+    gateway: true
+    server_conf:
+      CVMFS_FILE_MBYTE_LIMIT: "30720"
+      CVMFS_MIN_CHUNK_SIZE: "16777216"
+      CVMFS_AVG_CHUNK_SIZE: "33554432"
+      CVMFS_MAX_CHUNK_SIZE: "67108864"
+  - name: containers.example.org
+    gateway: true
+    gateway_keys:
+      # For users to manually publish container images in the content directory
+      - id: manual_containers.example.org
+        path: "/content"
+      # For CVMFS Container Tools to publish container images automatically
+      - id: auto_containers.example.org
+        path: "/"
+
+cvmfs_restricted_repo_name: "restricted.example.org"
+cvmfs_s1_restricted_acl: []
+# These variables only apply to s0 server
+cvmfs_s0_publish_acl: []
+cvmfs_s0_http_acl: []

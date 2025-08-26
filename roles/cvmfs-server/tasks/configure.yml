@@ -1,0 +1,27 @@
+---
+
+- name: Increase file descriptor limits
+  pam_limits: domain='*' limit_item=nofile limit_type=- value='20000'
+
+- name: Create cron task for CVMFS server snapshots (stratum 1)
+  cron:
+    name: cvmfs-server-snapshot
+    cron_file: cvmfs-server-snapshot
+    user: root
+    minute: "*/5"
+    job: "/usr/bin/cvmfs_server snapshot -a -s"
+  when: cvmfs_stratum_level == "stratum1"
+
+# CVMFS auto checks: output of the auto check is written to /var/log/cvmfs/checks.log
+# Will not check a repo if it has already been checked within the last CVMFS_CHECK_ALL_MIN_DAYS (default 30).
+# Runs on a random but persistent (for each host) day between 1 and 30.
+- name: Create cron task for CVMFS server checks
+  cron:
+    name: cvmfs-server-check
+    cron_file: cvmfs-server-check
+    user: root
+    minute: "0"
+    hour: "3"
+    day: "{{ 31 | random(seed=inventory_hostname, start=1) }}"
+    month: 1,3,5,7,9,11
+    job: "/usr/bin/cvmfs_server check -i -a"

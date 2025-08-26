@@ -1,0 +1,140 @@
+---
+
+###### Variables which apply to both s0 and s1.
+
+# Whether to configure the required volumes and filesystems for CVMFS.
+# If false the admin must set them up manually.
+cvmfs_configure_storage: true
+
+# Whether to create static local user accounts and authorized_keys files for admin login.
+cvmfs_local_accounts: true
+
+# If cvmfs_configure_storage, name of physical device in /dev/ on which to set up
+# a VG for CVMFS. Must be undefined by default. Persistent identifiers should be used,
+# since bare block device names can change across reboots.
+# cvmfs_pv_name:
+
+# If cvmfs_configure_storage, name of volume group for CVMFS logical volumes.
+cvmfs_vg_name: "datavg"
+
+# If cvmfs_configure_storage, size of the /srv/cvmfs logical volume and
+# filesystem for the primary repository storage.
+cvmfs_srv_size: "10G"
+
+# Dict of attributes of the 'cvmfs' service account.
+cvmfs_service_account: {}
+
+# Dict of all admin accounts and associated information, from which
+# authorized accounts are selected (using cvmfs_authorized_admins).
+# Keys can be removed if they contain the attribute 'state: absent'.
+cvmfs_admin_list: {}
+
+# List of admin accounts to set up and manage, to be defined on the basis of
+# specific hosts or groups.
+cvmfs_authorized_admins: []
+
+# Whether to set firewall rules allowing external SSH access for team members.
+# If false the server may need manual configuration to e.g. let team members log in via a proxy node.
+cvmfs_configure_ssh_rules: true
+
+# The version of cvmfs-server to install or upgrade to, e.g. "2.6.0".
+# cvmfs_application_version: ""
+
+# The port that httpd listens on (in addition to the default port 80).
+# If this is changed, CVMFS_STRATUM1 in the server.conf file will need
+# to be manually updated. Also, the port used for a stratum0 server must match
+# what is defined in cvmfs_s0_address for corresponding stratum 1 servers.
+cvmfs_http_port: "8000"
+
+# List of dicts representing repositories (and associated properties) to configure on the server.
+# Each repository dict can contain a sub-dict 'server_conf' for arbitrary CVMFS server settings.
+# cvmfs_s0_address can specify a different stratum 0 host name and port for an individual repo,
+# otherwise the global value of cvmfs_s0_address will be used by default.
+# The 'server_url' property is similar but defines the HTTP URL (including path) to access the repository storage
+# in case it is different from the stratum 0 itself (e.g. to use S3 storage). It should not have a trailing slash at the end.
+# The 'gateway' boolean property of a repo determines whether it will be configured via s0 gateway for publishing access.
+# The 'replicate' boolean property determines whether s1 servers will be configured to replicate the repo (default: true).
+# The 'gateway_keys' sub-dict can be used to set up multiple keys publishing to different paths on the same repo.
+# Example:
+# cvmfs_repo_list:
+#   - name: projects.example.org
+#   - name: software.example.org
+#     gateway: true
+#   - name: stuff.example.net
+#     cvmfs_s0_address: "cvmfs-other-s0.example.net:8000"
+#   - name: data.example.org
+#     replicate: false
+#     options: "-Z none"
+#     server_conf:
+#       CVMFS_FILE_MBYTE_LIMIT: "4096"
+#   - name: things.example.org
+#     gateway: true
+#     gateway_keys:
+#       - id: key1_things.example.org
+#         path: "/path1"
+#       - id: key2_things.example.org
+#         path: "/path2"
+
+cvmfs_repo_list: []
+
+# An optional description of the site or location of the stratum server,
+# used for descriptive purposes as a filebeat/metricbeat tag.
+# Defined as a list of one string which can be 'resource-cedar', 'resource-arbutus', etc. Empty by default.
+cvmfs_resource_site: []
+
+# The stratum server meta information is displayed in monitoring, etc.
+# See https://cvmfs.readthedocs.io/en/stable/cpt-servermeta.html#global-meta-information
+cvmfs_server_meta_info:
+  administrator: "Your Name"
+  email: "you@organisation.org"
+  organisation: "Your Organisation"
+
+###### Variables which only apply to s1.
+
+# List of IP addresses or subnets which may connect to the s1 for HTTP read,
+# on the port defined by cvmfs_http_port. The default is global access.
+cvmfs_s1_http_acl:
+  - "0.0.0.0/0"
+
+# List of IP addresses or subnets which may connect to the s1 for HTTP read,
+# on the default HTTP port 80. The default is none.
+cvmfs_s1_default_http_acl: []
+
+# The repository to which the restricted ACLs will be applied.
+# Must be undefined by default.
+# cvmfs_restricted_repo_name:
+
+# ACLs for access to restricted repo on s1. Use this only for
+# general rules for all hosts.
+cvmfs_s1_restricted_acl: []
+
+# ACLs for access to restricted repo on s1. Use this only for extra
+# rules specific to a particular host (i.e. private IP addresses).
+cvmfs_s1_restricted_acl_extra: []
+
+# The address, including port number, of the s0 that s1 servers will
+# replicate from. E.g. cvmfs-s0.example.org:8000
+#cvmfs_s0_address:
+
+###### Variables which only apply to s0.
+
+# List of IP addresses or subnets which may connect to the s0 for publishing.
+cvmfs_s0_publish_acl: []
+
+# List of IP addresses or subnets which may connect to the s0 for HTTP read
+# access (must include publishers).
+cvmfs_s0_http_acl: []
+
+# Whether to enable stats plots and webpage, see https://cvmfs.readthedocs.io/en/2.8/cpt-releasenotes.html#publisher-statistics-plots
+cvmfs_enable_stats: false
+
+# Should be true unless only S3 object storage is used, then httpd is not needed.
+cvmfs_enable_httpd: true
+
+###### Other
+
+# Possibly to be removed in future
+institute: "default"
+
+# Used to identify where to insert rules in the iptables file.
+cvmfs_iptables_line_marker: "# INSERT CVMFS RULES HERE"

@@ -1,0 +1,4 @@
+---
+
+- name: Create cron task for garbage collection
+  cron: name="cvmfs-garbage-collection all" cron_file="cvmfs-garbage-collection" user="root" minute="00" hour="02" job="/usr/bin/cvmfs_server gc -a -l -f"

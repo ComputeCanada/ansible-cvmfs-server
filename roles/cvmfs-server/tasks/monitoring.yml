@@ -1,0 +1,13 @@
+---
+
+- name: Install cvmfs-servermon (stratum 1)
+  yum: name="cvmfs-servermon" state=latest
+  when: cvmfs_stratum_level == "stratum1"
+
+- name: Configure cvmfs-servermon (stratum 1)
+  blockinfile:
+    marker: "# --- {mark} Ansible managed for CVMFS"
+    state: present
+    create: no
+    dest: /etc/cvmfsmon/api.conf
+    block: "{{ lookup('template', 'templates/api.conf.j2') }}"

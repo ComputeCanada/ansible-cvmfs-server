@@ -1,0 +1,36 @@
+---
+
+- name: Temporarily stop gateway publishing access for upgrade (s0)
+  service:
+    name: cvmfs-gateway
+    state: stopped
+  when: cvmfs_stratum_level == "stratum0"
+
+- name: Temporarily disable snapshot cron for upgrade
+  cron: name="cvmfs-server-snapshot" cron_file="cvmfs-server-snapshot" user="root" state="absent"
+  when: cvmfs_stratum_level == "stratum1"
+
+- name: Temporarily disable gc cron for upgrade
+  cron: name="cvmfs-garbage-collection all" cron_file="cvmfs-garbage-collection" user="root" state="absent"
+
+# Remote transactions via gateway do not create a in_transaction.lock file,
+# but they will be killed by stopping the gateway service. There could still
+# be a local transaction though.
+- name: Wait for any transaction/gc in progress to finish
+  wait_for:
+    path: "/var/spool/cvmfs/{{ item.name }}/in_transaction.lock"
+    state: absent
+  loop: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: cvmfs_stratum_level == "stratum0"
+
+- name: Wait for any snapshot/gc in progress to finish  
+  wait_for:
+    path: "/var/spool/cvmfs/{{ item.name }}/is_updating.lock"
+    state: absent
+  loop: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: cvmfs_stratum_level == "stratum1"
+

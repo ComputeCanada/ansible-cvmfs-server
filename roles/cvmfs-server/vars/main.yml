@@ -1,0 +1,5 @@
+---
+# vars file for cvmfs-server
+
+#cvmfs_test_var: "{{ (cvmfs_stratum_level == 'stratum0') | ternary('s0', 's1') }}{{ (ansible_nodename in groups['CVMFS_Prod']) | ternary('', 'dev') }}"
+
