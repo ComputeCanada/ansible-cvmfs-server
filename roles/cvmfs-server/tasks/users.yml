@@ -1,8 +1,7 @@
 ---
 
-# The cvmfs user/group can be set to particular values if needed, 
-# e.g. if it has to match something from LDAP,
-# otherwise use the defaults.
+# If the server uses CC LDAP, the admin should have already set that up by now.
+# For s0, we pre-configure the cvmfs account before the cvmfs client RPM would create it.
 # For s1, the client RPM will not be installed so the account will not get created automatically.
 # The cvmfs account does not really need to exist on a s1, but we will make it anyway,
 # so that gc and snapshot (swissknife) operations run as a non-privileged user.
@@ -22,8 +21,8 @@
     shell: "{{ cvmfs_service_account['shell'] | default('/sbin/nologin') }}"
     create_home: no
 
-# If  LDAP is used we will end up with the same UIDs from LDAP.
-# If  LDAP is not used we don't care what UID the accounts have.
+# If CC LDAP is used we will end up with the same UIDs from LDAP.
+# If CC LDAP is not used we don't care what UID the accounts have.
 # Iterate over all accounts, but only add those defined as authorized for this host.
 - name: Set up administrator accounts
   user:
@@ -33,7 +32,9 @@
   with_dict: "{{ cvmfs_admin_list }}"
   loop_control:
     label: "{{ item.key }}"
-  when: "item.key in cvmfs_authorized_admins"
+  when:
+    - item.key in cvmfs_authorized_admins
+    - cvmfs_local_accounts
 
 - name: Set up administrator keys
   authorized_key:
@@ -44,7 +45,9 @@
   with_dict: "{{ cvmfs_admin_list }}"
   loop_control:
     label: "{{ item.key }}"
-  when: "item.key in cvmfs_authorized_admins"
+  when:
+    - item.key in cvmfs_authorized_admins
+    - cvmfs_local_accounts
 
 # This covers the case of an account being removed from cvmfs_authorized_admins instead of setting 'state: absent' in cvmfs_admin_list.
 # ignore_errors is used to avoid an error when the account does not exist (in which case the key does not need to be checked).
@@ -59,7 +62,9 @@
   with_dict: "{{ cvmfs_admin_list }}"
   loop_control:
     label: "{{ item.key }}"
-  when: "item.key not in cvmfs_authorized_admins"
+  when:
+    - item.key not in cvmfs_authorized_admins
+    - cvmfs_local_accounts
   check_mode: True
   ignore_errors: True
   register: check_authorized_keys
@@ -69,5 +74,6 @@
 - name: Fail if a key that should be absent is found
   fail:
     msg: "Please manually remove the key(s) that need to change."
-  when: check_authorized_keys.changed
-
+  when:
+    - cvmfs_local_accounts
+    - check_authorized_keys.changed

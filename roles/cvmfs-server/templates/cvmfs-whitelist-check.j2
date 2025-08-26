@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+
+import sys
+import requests
+import datetime
+import syslog
+from urllib.parse import urlparse
+
+# Explicitly set the program name (avoids a leading slash showing up)
+syslog.openlog(ident="cvmfs-whitelist-check")
+
+try:
+  url = sys.argv[1]
+except Exception as e:
+  syslog.syslog(syslog.LOG_ERR, f"CVMFS whitelist check failed with undefined URL, {type(e).__name__}: {e}")
+  raise e
+
+try:
+  parsed_url = urlparse(url)
+  assert all([parsed_url.scheme, parsed_url.netloc]), f"URL {url} is not valid"
+  r = requests.get(url)
+  assert r.status_code == 200, "HTTP request did not succeed"
+
+  i = r.iter_lines()
+  signature_line = next(i)
+  expiry_line = next(i)
+  expiry_line = expiry_line.decode('utf-8')
+  # Strip off leading 'E'
+  if expiry_line[0] == 'E':
+    expiry_date = expiry_line[1:] 
+  else:
+    raise Exception("Expiry date is not in expected format.")
+
+  expiry_date = datetime.datetime.strptime(expiry_date, '%Y%m%d%H%M%S')
+  syslog.syslog(syslog.LOG_INFO, f'Signature in { url } expires on {expiry_date}')
+  remaining = expiry_date - datetime.datetime.utcnow()
+  if remaining.days < 12:
+    syslog.syslog(syslog.LOG_ERR, f"CVMFS whitelist { url } is about to expire in { remaining.days } days")
+
+except Exception as e:
+  syslog.syslog(syslog.LOG_ERR, f"CVMFS whitelist check failed for { url }, {type(e).__name__}: {e}")
+  raise e

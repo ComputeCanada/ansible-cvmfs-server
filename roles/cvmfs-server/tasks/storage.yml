@@ -14,7 +14,10 @@
 # Note: for now a manual '/sbin/pvresize /dev/vdb' is needed when expanding.
 # Will be handled by https://github.com/ansible-collections/community.general/pull/422
 - name: Create volume group for CVMFS
-  lvg: pvs="/dev/{{ cvmfs_pv_name }}" vg="{{ cvmfs_vg_name }}"
+  lvg:
+    pvs: "/dev/{{ cvmfs_pv_name }}"
+    vg: "{{ cvmfs_vg_name }}"
+    pvresize: true
   when: cvmfs_pv_name is defined
 
 # /srv/cvmfs
@@ -32,7 +35,10 @@
   lvol: vg="{{ cvmfs_vg_name }}" lv=var.spool.cvmfs size="{{ cvmfs_spool_size }}"
 
 - name: Format ext4 spool filesystem
-  filesystem: dev="/dev/mapper/{{ cvmfs_vg_name }}-var.spool.cvmfs" fstype=ext4
+  filesystem:
+    dev: "/dev/mapper/{{ cvmfs_vg_name }}-var.spool.cvmfs"
+    fstype: ext4
+    resizefs: yes
 
 - name: Mount spool filesystem and add to /etc/fstab
   mount: name=/var/spool/cvmfs src="/dev/mapper/{{ cvmfs_vg_name }}-var.spool.cvmfs" state=mounted fstype=ext4 passno=2

@@ -8,3 +8,6 @@
     group: root
     mode: "u=r,g=r,o="
     validate: '/usr/sbin/visudo -c -f %s'
+  vars:
+    cvmfs_sudoers: "{{ cvmfs_admin_list.keys()|intersect(cvmfs_authorized_admins) }}"
+  when: cvmfs_sudoers | length > 0

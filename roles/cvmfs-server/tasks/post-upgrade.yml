@@ -1,19 +1,22 @@
 ---
 
 - name: Migrate repositories after upgrade
-  command: "cvmfs_server migrate {{ item.key }}"
-  with_dict: "{{ cvmfs_repo_list }}"
-  register: cvmfs_repo_migration
+  command: "cvmfs_server migrate {{ item.name }}"
+  loop: "{{ cvmfs_repo_list }}"
   loop_control:
-    label: "{{ item.key }}"
+    label: "{{ item.name }}"
+  when: (cvmfs_stratum_level == "stratum0") or (cvmfs_stratum_level == "stratum1" and (item.replicate | default(true)))
+  register: cvmfs_repo_migration
 
 - name: Show result of repository migration
   debug:
-    var: item.stdout
+    msg: "{{ item.stdout | default('N/A') }}"
   with_items: "{{ cvmfs_repo_migration.results }}"
+  when:
+    - (cvmfs_stratum_level == "stratum0") or (cvmfs_stratum_level == "stratum1" and (item.replicate | default(true)))
+    - not ansible_check_mode
   loop_control:
-    label: "{{ item.item.key }}"
-  when: not ansible_check_mode
+    label: "{{ item.item.name }}"
 
 # if additional manual upgrade steps are needed, could use pause with a prompt here.
 # https://docs.ansible.com/ansible/latest/modules/pause_module.html

@@ -1,0 +1,4 @@
+{% for item in cvmfs_repo_list %}
+#Ansible: cvmfs-whitelist-resign {{ item.name }}
+00 09 1,9,17,25 * * root /usr/bin/cvmfs_server resign {{ item.name }}
+{% endfor %}

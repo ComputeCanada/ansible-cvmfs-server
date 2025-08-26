@@ -2,6 +2,11 @@ CVMFS_SYNCFS_LEVEL=cautious
 CVMFS_ENFORCE_LIMITS=true
 CVMFS_ROOT_KCATALOG_LIMIT=50
 CVMFS_NESTED_KCATALOG_LIMIT=200
+{% if cvmfs_stratum_level == "stratum0" and cvmfs_enable_stats %}
+CVMFS_UPLOAD_STATS_DB=true
+CVMFS_UPLOAD_STATS_PLOTS=true
+CVMFS_EXTENDED_GC_STATS=true
+{% endif %}
 {% for key, value in cvmfs_server_conf.items() %}
 {{ key }}={{ value }}
 {% endfor %}

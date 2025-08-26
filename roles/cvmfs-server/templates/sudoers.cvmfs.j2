@@ -1,3 +1,3 @@
-{% for item in cvmfs_admin_list.keys()|intersect(cvmfs_authorized_admins) %}
+{% for item in cvmfs_sudoers %}
 {{ item }}	ALL=(ALL) NOPASSWD:ALL
 {% endfor %}
