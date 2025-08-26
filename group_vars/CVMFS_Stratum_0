@@ -1,6 +1,4 @@
 ---
 cvmfs_stratum_level: "stratum0"
-# Stratum 0 spool storage is now only needed for local transactions and some other small files,
-# not for data published via gateway. https://sft.its.cern.ch/jira/browse/CVM-1793
-# However certain special operations (e.g. eliminate-hardlinks) use the spool dir storage.
-cvmfs_spool_size: "10G"
+cvmfs_spool_size: "50G"
+cvmfs_spool_threshold: "500000"
