@@ -1,7 +1,6 @@
 ---
 
 # See https://sft.its.cern.ch/jira/browse/CVM-1243
-
 - name: Apply stratum server meta information
   template:
     src: meta.json.j2
@@ -9,4 +8,4 @@
     owner: root
     group: root
     mode: '644'
-
+  when: cvmfs_enable_httpd

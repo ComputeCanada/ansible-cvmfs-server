@@ -1,7 +1,7 @@
 galaxy_info:
-  author: CVMFS National Team
-  description: CVMFS server deployment
-  company: Compute Canada
+  author: R. P. Taylor, CVMFS National Team
+  description: CVMFS Server Deployment
+  company: University of Victoria
   
   # If the issue tracker for your role is not on github, uncomment the
   # next line and provide a value

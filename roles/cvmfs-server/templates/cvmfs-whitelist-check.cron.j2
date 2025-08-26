@@ -1,0 +1,7 @@
+{% for item in cvmfs_repo_list %}
+{% if item.server_url is defined %}
+00 10 * * * cvmfs /usr/local/bin/cvmfs-whitelist-check {{ item.server_url }}/{{ item.name }}/.cvmfswhitelist
+{% else %}
+00 10 * * * cvmfs /usr/local/bin/cvmfs-whitelist-check http://localhost:{{ cvmfs_http_port }}/cvmfs/{{ item.name }}/.cvmfswhitelist
+{% endif %}
+{% endfor %}

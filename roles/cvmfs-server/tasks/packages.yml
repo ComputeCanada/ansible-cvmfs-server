@@ -4,25 +4,30 @@
   yum:
     name: "{{ packages }}"
     state: "present"
-    update_cache: yes
   vars:
     packages:
       - lsof              # useful
       - lvm2              # to make logical volumes
       - xfsprogs          # to make XFS filesystem
-      - parted            # to make swap partition
       - wget              # useful
-      - nc                # useful
-      - epel-release      # to provide jq dependency for cvmfs-server
-      - python2-jmespath  # to use ansible json_query filter
+      - netcat            # useful
       - iptables          # required
+      - iptables-services # to use iptables on >= EL7
 
-- name: Install some pre-requisite packages for EL7
+# On EL7, epel is required for jq for cvmfs-server.
+# On EL8, epel is only required for python3-anyjson for cvmfs-servermon (on s1).
+# UVic has a separate epel mirror and does not use the epel-release package.
+- name: Install EPEL repository
   yum:
-    name: iptables-services	# required for iptables on EL7
-  when:
-    - ansible_distribution == "RedHat" or ansible_distribution == "CentOS" or ansible_distribution == "Scientific"
-    - ansible_distribution_major_version is version_compare("7", ">=")
+    name: epel-release
+  when: institute != 'uvic'
+
+- name: Install CernVM RPM signing key
+  rpm_key:
+   key: https://cvmrepo.web.cern.ch/cvmrepo/yum/RPM-GPG-KEY-CernVM
+   fingerprint: "70B9 8904 8820 8E31 5ED4  5208 230D 389D 8AE4 5CE7"
+   state: present
+   validate_certs: yes
 
 - name: Install CVMFS YUM repository
   yum: name=https://ecsft.cern.ch/dist/cvmfs/cvmfs-release/cvmfs-release-latest.noarch.rpm

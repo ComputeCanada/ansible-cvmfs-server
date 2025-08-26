@@ -1,21 +1,45 @@
 ---
 # These variables apply to s0 and/or s1 server
-cvmfs_srv_size: "750G"
-cvmfs_application_version: "2.7.2"
+cvmfs_srv_size: "1250G"
+cvmfs_application_version: "2.13.2"
 cvmfs_s0_address: "cvmfs-s0dev-soft.example.org:8000"
 cvmfs_repo_list:
-  cvmfs-config.dev.example.org:
-    options: "-o root"
-  software.dev.example.org:
+  - name: cvmfs-config.dev.example.org
+  - name: soft-dev.example.org
+    gateway: true
     server_conf:
       CVMFS_FILE_MBYTE_LIMIT: "2048"
       CVMFS_VIRTUAL_DIR: "true"
-  restricted.dev.example.org: {}
-  data.dev.example.org:
-    options: "-Z none"
+  - name: restricted.dev.example.org
+    gateway: true
     server_conf:
-      CVMFS_FILE_MBYTE_LIMIT: "4096"
-  test.dev.example.org: {}
+      CVMFS_FILE_MBYTE_LIMIT: "2048"
+  - name: data.dev.example.org
+    gateway: true
+    server_conf:
+      CVMFS_FILE_MBYTE_LIMIT: "30720"
+      CVMFS_MIN_CHUNK_SIZE: "16777216"
+      CVMFS_AVG_CHUNK_SIZE: "33554432"
+      CVMFS_MAX_CHUNK_SIZE: "67108864"
+  - name: test.dev.example.org
+  - name: containers.dev.example.org
+    gateway: true
+    gateway_keys:
+      # For users to manually publish container images in the content directory
+      - id: manual_containers.dev.example.org
+        path: "/content"
+      # For CVMFS Container Tools to publish container images automatically
+      - id: auto_containers.dev.example.org
+        path: "/"
+  - name: s3-test.dev.example.org
+    replicate: false
+    server_url: http://object-arbutus.cloud.example.org:8880/cvmfs-s3-test.dev.example.org
+    options: "-s /etc/cvmfs/s3/s3-test.conf"
+    server_conf:
+      CVMFS_FILE_MBYTE_LIMIT: "30720"
+      CVMFS_MIN_CHUNK_SIZE: "16777216"
+      CVMFS_AVG_CHUNK_SIZE: "33554432"
+      CVMFS_MAX_CHUNK_SIZE: "67108864"
 
 cvmfs_restricted_repo_name: "restricted.dev.example.org"
 cvmfs_s1_restricted_acl: []

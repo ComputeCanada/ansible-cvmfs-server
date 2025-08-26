@@ -1,33 +1,38 @@
 ---
 
+# for integration with an external ansible role that manages iptables
+- name: Create external iptables rule file for CVMFS
+  blockinfile:
+    create: yes
+    marker: "# --- {mark} Ansible managed for CVMFS"
+    state: present
+    dest: /etc/sysconfig/iptables-cvmfs
+    block: "{{ lookup('template', 'templates/iptables.cvmfs.j2') }}"
+  vars:
+    cvmfs_login_acl: "{{ cvmfs_authorized_admins | map('extract', cvmfs_admin_list, 'login') | flatten | unique }}"
+  when: institute == "uvic"
+
 - name: Check for iptables line marker
   lineinfile:
     path: /etc/sysconfig/iptables
-    line: "# INSERT CVMFS RULES HERE"
+    line: "{{ cvmfs_iptables_line_marker }}"
   check_mode: true
   register: iptables_line_marker
 
 # Unaesthetic but unavoidable. See 20170922 minutes.
 - name: Fail if iptables line marker is absent
-  fail: msg="Please manually insert the line marker string '# INSERT CVMFS RULES HERE' at the appropriate position in the iptables file."
+  fail: msg="Please manually insert the line marker string \"{{ cvmfs_iptables_line_marker }}\" at the appropriate position in the iptables file."
   when: iptables_line_marker.changed
-
-# map extract requires python-jinja2 >= 2.7, so we need to skip this for now on EL6 hosts. 
-# TODO: clean up after EL6 hosts are gone, just use a var: in the following blockinfile
-
-- set_fact:
-    cvmfs_login_acl: "{{ cvmfs_authorized_admins | map('extract', cvmfs_admin_list, 'login') | flatten | unique }}"
-  when:
-    - ansible_distribution == "RedHat" or ansible_distribution == "CentOS" or ansible_distribution == "Scientific"
-    - ansible_distribution_major_version is version_compare("7", ">=")
 
 - name: Apply CVMFS iptables rules
   blockinfile:
     marker: "# --- {mark} Ansible managed for CVMFS"
-    insertafter: "^# INSERT CVMFS RULES HERE" 
+    insertafter: "^{{ cvmfs_iptables_line_marker }}"
     state: present
     dest: /etc/sysconfig/iptables
     block: "{{ lookup('template', 'templates/iptables.cvmfs.j2') }}"
+  vars:
+    cvmfs_login_acl: "{{ cvmfs_authorized_admins | map('extract', cvmfs_admin_list, 'login') | flatten | unique }}"
 
 # don't use a handler because we're uninstalling firewalld next,
 # so iptables needs to be activated before that for continuous protection.
@@ -37,9 +42,6 @@
 
 - name: Uninstall firewalld
   yum: name=firewalld state=absent
-  when:
-    - ansible_distribution == "RedHat" or ansible_distribution == "CentOS" or ansible_distribution == "Scientific"
-    - ansible_distribution_major_version is version_compare("7", ">=")
 
 #- name: reload ip6tables rules
 #  service: name=ip6tables state=reloaded

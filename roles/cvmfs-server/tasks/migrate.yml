@@ -1,0 +1,77 @@
+---
+
+# Special s0 repository migration procedure. It involves creating a s0 repo with mkfs, temporarily downgrading it to a s1 replica,
+# manually snapshotting to copy data from the old s0, then promoting it back to a s0 master repo again. Relies on the presence of
+# a repository-level field stratum_level in cvmfs_repo_list, to e.g. configure a repo as a s1 replica on a s0 server.
+
+- name: Create replica.conf for s1 repository
+  copy:
+    dest: "/etc/cvmfs/repositories.d/{{ item.name }}/replica.conf"
+    # Use increased workers, timeout and retries for full sync of repo, which can take a long time.
+    content: |
+      # Created by cvmfs_server.
+      CVMFS_NUM_WORKERS=32
+      CVMFS_PUBLIC_KEY=/etc/cvmfs/keys/
+      CVMFS_HTTP_TIMEOUT=60
+      CVMFS_HTTP_RETRIES=10
+    owner: root
+    group: root
+    mode: 0644
+  when: (item.stratum_level | default(cvmfs_stratum_level)) == "stratum1"
+  loop: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Remove replica.conf for s0 repository
+  file:
+    path: "/etc/cvmfs/repositories.d/{{ item.name }}/replica.conf"
+    state: absent
+  when: (item.stratum_level | default(cvmfs_stratum_level)) == "stratum0"
+  loop: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Set stratum level in server.conf
+  lineinfile:
+    path: "/etc/cvmfs/repositories.d/{{ item.name }}/server.conf"
+    create: no
+    regexp: '^CVMFS_REPOSITORY_TYPE'
+    line: 'CVMFS_REPOSITORY_TYPE={{ item.stratum_level | default(cvmfs_stratum_level)}}'
+    state: present
+  loop: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Set stratum 0 URL in server.conf
+  lineinfile:
+    path: "/etc/cvmfs/repositories.d/{{ item.name }}/server.conf"
+    create: no
+    regexp: '^CVMFS_STRATUM0'
+    line: 'CVMFS_STRATUM0=http://{{ s0_address }}/cvmfs/{{ item.name }}'
+    state: present
+  vars:
+    localhost_address: "localhost:{{ cvmfs_http_port }}"
+    s0_address: "{{ localhost_address if (item.stratum_level | default(cvmfs_stratum_level)) == 'stratum0' else (item.cvmfs_s0_address | default(cvmfs_s0_address)) }}"
+  loop: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Set stratum 1 URL in server.conf
+  lineinfile:
+    path: "/etc/cvmfs/repositories.d/{{ item.name }}/server.conf"
+    create: no
+    regexp: '^CVMFS_STRATUM1'
+    line: 'CVMFS_STRATUM1=http://localhost:{{ cvmfs_http_port }}/cvmfs/{{ item.name }}'
+    state: "{{ 'present' if (item.stratum_level | default(cvmfs_stratum_level)) == 'stratum1' else 'absent' }}"
+  loop: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Remove snapshot timestamp for s0 repository
+  file:
+    path: "/srv/cvmfs/{{ item.name }}/.cvmfs_last_snapshot"
+    state: absent
+  when: (item.stratum_level | default(cvmfs_stratum_level)) == "stratum0"
+  loop: "{{ cvmfs_repo_list }}"
+  loop_control:
+    label: "{{ item.name }}"

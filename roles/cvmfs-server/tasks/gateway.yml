@@ -1,7 +1,35 @@
 ---
+# For repos without gateway_keys details: construct a list with the same structure as below (i.e. from subelements),
+# except with an empty dict where gateway_keys would otherwise be. The purpose of this is to make it possible to combine both types of gateway key lists,
+# and process all gateway keys together regardless of type.
+- name: Prepare basic gateway key list (stratum 0)
+  set_fact:
+    cvmfs_basic_gateway_keys: "{{ (cvmfs_basic_gateway_keys | default([])) + i }}"
+  vars:
+    i:
+      -
+        - "{{ item }}"
+        - {}
+  loop: "{{ cvmfs_repo_list | rejectattr('gateway_keys', 'defined') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
 
-- name: Install CVMFS gateway RPM (stratum 0)
-  yum: name="cvmfs-gateway"
+# For repos with gateway_keys details: create subelements in order to iterate over multiple keys per repo, if defined.
+# See https://docs.ansible.com/ansible/latest/user_guide/playbooks_filters.html#combining-objects-and-subelements
+- name: Prepare detailed gateway key list (stratum 0)
+  set_fact:
+    cvmfs_detailed_gateway_keys: "{{ cvmfs_repo_list | subelements('gateway_keys', skip_missing=True) }}"
+
+# Now each item in cvmfs_gateway_keys represents a key, with repository name (item.0.name) and, for detailed keys, id (item.1.id) and path (item.1.path)
+# Note: this does not filter on the 'gateway' boolean yet - that is done separately (which allows setting state: absent if not gateway).
+# Separate task because of https://github.com/ansible/ansible/issues/40239
+- name: Combine gateway key lists (stratum 0)
+  set_fact:
+    cvmfs_gateway_keys: "{{ cvmfs_detailed_gateway_keys + cvmfs_basic_gateway_keys }}"
+
+#- debug:
+#    msg: "repo: {{ item.0.name }}, id: {{ item.1.id | default('NONE') }}, path: {{ item.1.path | default ('NONE') }} "
+#  loop: "{{ cvmfs_gateway_keys }}"
 
 # The template or copy (using the src parameter) modules would work well here,
 # but unfortunately they do not support the state parameter: https://github.com/ansible/ansible/issues/29781
@@ -10,60 +38,104 @@
 # A limitation of this is that if the file properties change (i.e. chmod) they won't get corrected.
 # So, using the file module after the template module addresses this limitation, and also correctly applies 
 # negative configuration via the state parameter according to the gateway variable.
-
 - name: Create gateway API keys for repository publishing access (stratum 0)
   template:
     src: repokey.gw.j2
-    dest: "/etc/cvmfs/keys/{{ item.key }}.gw"
+    dest: "/etc/cvmfs/keys/{{ cvmfs_gateway_key_name }}.gw"
     force: no
     owner: root
     group: root
     mode: '400'
   vars:
-    cvmfs_repo_name: "{{ item.key }}"
     cvmfs_gateway_key: "{{ lookup('password', '/dev/null chars=ascii_letters,digits') }}" 
-  with_dict: "{{ cvmfs_repo_list }}"
+    cvmfs_gateway_key_name: "{{ item.1.id | default(item.0.name) }}"
+    cvmfs_key_id: "{{ cvmfs_gateway_key_name }}"
+  loop: "{{ cvmfs_gateway_keys }}"
   loop_control:
-    label: "{{ item.key }}"
-  when: item.value.gateway|default(false)
+    label: "{{ cvmfs_gateway_key_name }}"
+  when: item.0.gateway|default(false)
   notify: "restart cvmfs-gateway"
 
+# Since the path depends on the type of key config, one limitation of this is that key files won't be
+# removed if they change type (i.e. from basic to detailed or vice versa).
 - name: Set properties of gateway API keys (stratum 0)
   file:
-    path: "/etc/cvmfs/keys/{{ item.key }}.gw"
+    path: "/etc/cvmfs/keys/{{ cvmfs_gateway_key_name }}.gw"
     owner: root
     group: root
     mode: '400'
-    state: "{{ 'file' if (item.value.gateway|default(false)) else 'absent' }}"
-  with_dict: "{{ cvmfs_repo_list }}"
+    state: "{{ 'file' if (item.0.gateway|default(false)) else 'absent' }}"
+  vars:
+    cvmfs_gateway_key_name: "{{ item.1.id | default(item.0.name) }}"
+  loop: "{{ cvmfs_gateway_keys }}"
   loop_control:
-    label: "{{ item.key }}"
+    label: "{{ cvmfs_gateway_key_name }}"
   notify: "restart cvmfs-gateway"
 
 # The public repo keys (.crt, .pub) and shared secret API key (.gw) are needed
 # on the publisher node, so for each repo put them all in a tar file for convenience.
 - name: Bundle up gateway API keys in /tmp/ for manual transportation (stratum 0)
   archive:
-    dest: "/tmp/keys-{{ item.key }}.tar"
+    dest: "/tmp/keys-{{ cvmfs_gateway_key_name }}.tar"
     format: "tar"
     owner: root
     group: root
     mode: '400'
     path:
-      - "/etc/cvmfs/keys/{{ item.key }}.gw"
-      - "/etc/cvmfs/keys/{{ item.key }}.crt"
-      - "/etc/cvmfs/keys/{{ item.key }}.pub"
+      - "/etc/cvmfs/keys/{{ cvmfs_gateway_key_name }}.gw"
+      - "/etc/cvmfs/keys/{{ item.0.name }}.crt"
+      - "/etc/cvmfs/keys/{{ item.0.name }}.pub"
     remove: no
-  with_dict: "{{ cvmfs_repo_list }}"
+  vars:
+    cvmfs_gateway_key_name: "{{ item.1.id | default(item.0.name) }}"
+  loop: "{{ cvmfs_gateway_keys }}"
   loop_control:
-    label: "{{ item.key }}"
-  when: item.value.gateway|default(false)
+    label: "{{ cvmfs_gateway_key_name }}"
+  when: item.0.gateway|default(false)
 
-# TODO what about the user.json and repo.json files? Configure by hand or ...?
+- name: Prepare detailed gateway repo config (stratum 0)
+  set_fact:
+    detailed_repos: "{{ (detailed_repos | default([])) + i }}"
+  vars:
+    i:
+      -
+        domain: "{{ item.name }}"
+        keys: "{{ item.gateway_keys }}"
+  loop: "{{ cvmfs_repo_list | selectattr('gateway', 'defined') | selectattr('gateway') | selectattr('gateway_keys', 'defined') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# Since there is typically > 1 detailed key per repo, their file names may not match "/etc/cvmfs/keys/${reponame}.gw",
+# and CVMFS does not automatically import those file locations. The file locations of detailed keys need to be explicitly enumerated instead.
+- name: Prepare detailed gateway key config (stratum 0)
+  set_fact:
+    detailed_keys: "{{ (detailed_keys | default([])) + i }}"
+  vars:
+    i:
+      -
+        type: "file"
+        file_name: "/etc/cvmfs/keys/{{ item.1.id }}.gw"
+  loop: "{{ cvmfs_detailed_gateway_keys }}"
+  loop_control:
+    label: "{{ item.1.id }}"
+
+- name: Configure gateway repo.json file (stratum 0)
+  template:
+    src: generic_json.j2
+    dest: /etc/cvmfs/gateway/repo.json
+    owner: root
+    group: root
+    mode: 0644
+  vars:
+    basic_repos: "{{ cvmfs_repo_list | selectattr('gateway', 'defined') | selectattr('gateway') | rejectattr('gateway_keys', 'defined') | map(attribute='name') | list }}"
+    json_content:
+      version: 2
+      repos: "{{ basic_repos + detailed_repos|default([]) }}"
+      keys: "{{ detailed_keys|default([]) }}"
+  register: gateway_repo_config
 
 - name: Enable gateway service (stratum 0)
   service:
     name: cvmfs-gateway
     enabled: yes
-    state: started
-
+    state: "{{ 'restarted' if gateway_repo_config.changed else 'started' }}"

@@ -1,17 +1,28 @@
 ---
 
-# 'cvmfs' client package is needed on s0 but not s1
+# common_packages: installed for any OS version and stratum type
+# s0_packages: installed only on stratum0 ('cvmfs' client package needed on s0 but not s1)
+# versioned_packages: a dict to handle different package versions on different OS versions
 - name: Install CVMFS server RPMs
   yum:
-    name: "{{ server_packages }} + {{ client_packages if cvmfs_stratum_level == 'stratum0' else [] }}"
+    name: "{{ common_packages + (s0_packages if cvmfs_stratum_level == 'stratum0' else []) + versioned_packages[ansible_distribution_major_version] }}"
     enablerepo: "cernvm"
   vars:
-    server_packages:
-      - "mod_wsgi"
+    common_packages:
       - "httpd"
       - "cvmfs-server-{{ cvmfs_application_version }}"
-    client_packages:
+    s0_packages:
       - "cvmfs-{{ cvmfs_application_version }}"
+      - "cvmfs-gateway-{{ cvmfs_application_version }}"
+    versioned_packages:
+      "6":
+        - "mod_wsgi"
+      "7":
+        - "mod_wsgi"
+      "8":
+        - "python3-mod_wsgi"
+      "9":
+        - "python3-mod_wsgi"
 
 # On s1, this directory may not exist yet since CVMFS client is not installed
 - name: Create keys directory
@@ -22,6 +33,18 @@
     group: root
     mode: 'u=rwx,g=rx,o=rx'
 
-- name: Enable httpd service
-  service: name=httpd enabled=yes state=started
+# See https://cvmfs.readthedocs.io/en/stable/cpt-replica.html#sct-geoip-db
+- name: Create geodb license key file (stratum 1)
+  ansible.builtin.template:
+    src: server.local.j2
+    dest: /etc/cvmfs/server.local
+    owner: root
+    group: cvmfs
+    mode: 0640
+  when: cvmfs_stratum_level == "stratum1"
 
+- name: Enable httpd service
+  service:
+    name: httpd
+    enabled: "{{ 'yes' if cvmfs_enable_httpd else 'no' }}"
+    state: "{{ 'started' if cvmfs_enable_httpd else 'stopped' }}"
